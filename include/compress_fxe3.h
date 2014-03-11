@@ -188,7 +188,7 @@ class CompressFXE3 : public Compress, private LZ2min {
 	}
 
 	void _flushBits( unsigned char*& b ) {
-		std::cout << "About to flush: " << _bc << std::endl;
+		//std::cout << "About to flush: " << _bc << std::endl;
         
         if (_bc & 15) {
 			_putBits(b,0,_bc & 15);

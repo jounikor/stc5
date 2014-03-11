@@ -99,8 +99,8 @@ namespace {
 	void usage( char **argv ) {
 		cerr << "Usage: " << argv[0] << " [-<options>] infile outfile" << endl;
 		cerr << "Options:" << endl;
-		cerr << "  -t string Set game title (32 chars max, default=infile)" << endl;
-		cerr << "  -A n      Select algorithm (0=FXE0, 2=FXE2, 3=STC5, 4=STC6), default=3" << endl;
+		//cerr << "  -t string Set game title (32 chars max, default=infile)" << endl;
+		//cerr << "  -A n      Select algorithm (0=FXE0, 2=FXE2, 3=STC5, 4=STC6), default=3" << endl;
 		cerr << "  -h        Show help" << endl;
 		cerr << "  -d        Handle file as raw data" << endl;
 		
@@ -272,14 +272,6 @@ int main( int argc, char** argv ) {
 	origiFileSize = rfile.tell();
 	rfile.seek(0,IO_SEEK_SET);
 
-#if 0
-	if (!RAW && (totalFileSize = compressionParams[algo].saveDecompressor(&wfile)) < 0) {
-		wfile.close();
-		rfile.close();
-		delete compr;
-		return 0;
-	}
-#endif
 	// Now we are ready to go.. first prepare the compressed
 	// file header information..
 
@@ -383,15 +375,6 @@ int main( int argc, char** argv ) {
 	fix.csize = comprFileSize;
 	fix.gap = gap;
 
-#if 0
-    if (!RAW && compressionParams[algo].fixDecompressor(&wfile,decomprOffset,&fix) < 0) {
-		cerr << "** Error writing file (4).." << endl;
-		rfile.close();
-		wfile.close();
-		delete compr;
-		return 0;
-	}
-#endif
 	//
 	// Calculate stuff..
 	//
