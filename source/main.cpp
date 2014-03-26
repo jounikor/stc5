@@ -18,8 +18,6 @@
 #include "port.h"
 
 #include "fio.h"
-#include "compress_fxe0.h"
-#include "compress_fxe2.h"
 #include "compress_fxe3.h"
 #include "compress_fxe4.h"
 #include "headers.h"
@@ -76,14 +74,14 @@ namespace {
 		int (*postFix)( FWriter*, long );
 	} compressionParams[] = {
 		// FXE0
-		{ 	buf, BLOCK_BUFFER, 31+254, FXEP_BLOCK_SIZE, 2, 1792, 256, 1, 5+8, FXEP_BLOCK_SIZE,
-			saveFXEHeader,fixFXEHeader, saveFXE0Header, fixFXE0Header, NULL },
+		{ 	NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			NULL,NULL, NULL, NULL, NULL },
 		// FXE1
 		{ 	NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 			NULL,NULL, NULL, NULL, NULL },
 		// FXE2
-		{ 	buf, BLOCK_BUFFER, FXE2_GOOD_MATCH, FXE2_MAX_MATCH, 2, 63, 512, 1, 6+8, FXE2_BLOCK_SIZE,
-			saveFXEHeader,fixFXEHeader, saveFXE2Header, fixFXE2Header, NULL },
+		{ 	NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			NULL,NULL, NULL, NULL, NULL },
 		// FXE3
 		{ 	buf, BLOCK_BUFFER, FXE3_GOOD_MATCH, FXE3_MAX_MATCH, 2, 32, 4096, 1, 6+8, FXE3_BLOCK_SIZE,
 			saveFXEHeader,fixFXEHeader, saveFXE3Header, fixFXE3Header, NULL },
@@ -173,20 +171,10 @@ int main( int argc, char** argv ) {
 
 	switch (algo) {
 	case fxe0:
-    	compr = new CompressFXE0(NBLOCKS);
-    	ID = FXEP_TYPE0_ID;
-		break;
 	case fxe1:
+    case fxe2:
 		cerr << "Sorry.. No bonus!" << endl;
 		exit(0);
-		//cout << "compr = new CompressFXE1(NBLOCKS);" << endl;
-		//compr = new CompressFXE1(NBLOCKS);
-    	//ID = FXEP_TYPE1_ID;
-		break;
-	case fxe2:
-		//cout << "compr = new CompressFXE2(NBLOCKS);" << endl;
-		compr = new CompressFXE2(NBLOCKS);
-    	ID = FXEP_TYPE2_ID;
 		break;
 	case fxe3:
 		//cout << "compr = new CompressFXE2(NBLOCKS);" << endl;
