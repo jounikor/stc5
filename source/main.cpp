@@ -17,10 +17,13 @@
 #include <cstring>
 #include "port.h"
 
+#include <unistd.h>
+
 #include "fio.h"
 #include "compress_fxe3.h"
 #include "compress_fxe4.h"
 #include "headers.h"
+
 
 using namespace Headers;
 //
