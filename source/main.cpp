@@ -349,7 +349,9 @@ int main( int argc, char** argv ) {
 	}
 
 	// Check alignment.. must be 4
-	
+
+#if 0
+
 	if (comprFileSize & 0x03) {
 		unsigned long pad = 0;
 		long l = 4-(comprFileSize & 0x03);
@@ -357,7 +359,7 @@ int main( int argc, char** argv ) {
 		comprFileSize += l;
 		totalFileSize += l;
 	}
-
+#endif
 	//
 	// Fix headers..
 	//
