@@ -1,6 +1,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; 
-; Version: 2
+; Version: 3a
 ;
 ; EXPERIMENTAL STC5 algorithm with original length at the end of file.
 ;
@@ -8,6 +8,10 @@
 ;
 ; This file is released into the public domain for commercial
 ; or non-commercial usage with no restrictions placed upon it.
+;
+; This version adds a heapsort into tree building phase..
+;
+;
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -20,8 +24,44 @@ PRETABLE	rs.b	(16*8+16*2)
 TABLE_SIZE	rs.b	0
 MTF		equ	LOWTABLE+64
 
+
+USE_HUNKS	equ	1
+
+
+
+	IF	USE_HUNKS
 		section	decruncher,code
 
+	ELSE
+;
+;
+;
+;
+
+
+startHunks:	dc.l	$03f3
+	ENDIF
+
+
+
+j:		lea	e+6(pc),a0
+loadAddr:	lea	$40000,a1
+fileSize:	move.l	#o-e-6-4,d0	; 
+		
+		lea	0(a0,d0.l),a2	; A2 = end of crunched data
+		move.l	a1,a3
+		add.l	(a2),a3		; A3 = end of decrunched area
+		cmp.l	a1,a2
+		bls.b	workAddr	;
+		cmp.l	a3,a2
+		bhi.b	workAddr
+		; move..
+.move:		move.b	-(a2),-(a3)
+		subq.l	#1,d0
+		bne.b	.move
+		move.l	a3,a0
+		;
+workAddr:	lea	$80000-TABLE_SIZE,a2
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -37,7 +77,7 @@ MTF		equ	LOWTABLE+64
 ; Notes:
 ;  The routine does not check if source and destination memory areas
 ;  overlap. In such case a crash is very probable.
-;  Runtime memory usage is 2952 bytes, freely reloctable using A2.
+;  Runtime memory usage is 2592 ($a20) bytes, freely reloctable using A2.
 ;
 ; Prototype:
 ;  void decrunch3( void *src, void *dst, void *tmp );
@@ -45,18 +85,13 @@ MTF		equ	LOWTABLE+64
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-j:		lea	e,a0
-		lea	$40000,a1
-		lea	$7e000,a2
-		bsr.b	decrunch
-		rts
 
 
 
 decrunch:	;movem.l	d2-d7/a2-a6,-(a7)
-		addq.w	#4+2,a0
+		;addq.w	#4+2,a0
 		;
-		; A0 = ptr to crunched data (ID already skipped)
+		; A0 = ptr to crunched data (ID already skipped) + 2
 		; A1 = ptr to destination mem
 		; A2 = ptr to work area
 
@@ -64,9 +99,11 @@ blockLoop:	tst.w	-(a0)		; Needed because the bit stream
 					; extracting function is always
 					; one word ahead.
 		bne.b	blockCont
-
-blockExit:	;movem.l	(a7)+,d2-d7/a2-a6
-		rts
+blockExit:	move.l	$4.w,a6
+		cmp.w	#$25,$14(a6)
+		bcs.w	jumpAddr
+		jsr	-$27c(a6)	; CacheClearU()
+jumpAddr:	jmp	$40000
 
 		; Initialize the bitshifter
 blockCont:	move.l	(a0)+,d7
@@ -79,18 +116,18 @@ blockCont:	move.l	(a0)+,d7
 		; D6 = _bc
 		; D7 = _bb
 		;
-decodeTrees:	lea	(PRETABLE+128-2,a2),a4	; A4 = PRETABLE+16*8
+decodeTrees:	lea	PRETABLE+128(a2),a4	; was A4 = PRETABLE+16*8 - 2
 		moveq	#16,d3
 
 		; Init MTF table M
 
 		moveq	#15,d0
-		lea	(MTF,a2),a3
+		lea	MTF(a2),a3
 
-.mtf:		move.b	d0,(0,a3,d0.w)	; (a2+MTF+D0)
+.mtf:		move.b	d0,0(a3,d0.w)	; (a2+MTF+D0)
 		dbf	d0,.mtf
 
-		move.w	d6,(a4)+	; pretable end marker
+		;move.w	d6,(a4)+	; pretable end marker
 
 		; Read in depths and store them into the PRETABLE
 		; The format is: depth<<11 | leaf#
@@ -163,7 +200,7 @@ matchFound:
 		; D2 = match_length-1
 		move.w	d2,d5			; D5 = PMR oldLength
 decodeOffset:
-		lea	(HGHTABLE,a2),a6
+		lea	HGHTABLE(a2),a6
 		bsr.b	getSyml
 
 		move.w	d2,d4
@@ -177,7 +214,7 @@ decodeOffset:
 		lsl.w	#8,d4
 
 		;
-		lea	(LOWTABLE,a2),a6
+		lea	LOWTABLE(a2),a6
 		bsr.b	getSyml
 		move.b	d2,d4
 		;
@@ -194,7 +231,7 @@ copyLoop:	move.w	d5,d0			; D5 = PMR lonLength
 		;
 .copy:		move.b	(a6)+,(a1)+		
 		dbf	d0,.copy
-	move.w	d5,$dff180
+	move.w	d6,$dff180
 		bra.b	mainLoop
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -218,7 +255,7 @@ getSyml:	move.l	a6,a3
 .lut:		cmp.l	(a6)+,d7
 		bhi.b	.lut
 		;
-		movem.w	(16*4-4,a6),d0/d1	; Clears bits 31-16 of D1
+		movem.w	16*4-4(a6),d0/d1	; Clears bits 31-16 of D1
 		; D0 = base index
 		; D1 = number of bits to extract
 
@@ -227,7 +264,7 @@ getSyml:	move.l	a6,a3
 		rol.l	d1,d2
 		sub.w	d0,d2
 		add.w	d2,d2
-		move.w	(0,a3,d2.w),d2		;lea	(16*8,a6),a3
+		move.w	0(a3,d2.w),d2		;lea	(16*8,a6),a3
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; 
@@ -254,6 +291,7 @@ getB:		sub.w	d1,d6
 		moveq	#16,d6
 		sub.w	d1,d6
 .getb:		lsl.l	d1,d7
+return:
 		rts
 
 
@@ -280,31 +318,29 @@ getB:		sub.w	d1,d6
 
 
 buildDecodingTree3:
-		lea	(128-2,a4),a4
-		clr.w	(a4)+	; was bsr.w prepareDecodingStructure
-buildDecodingTree2:
+		lea	128(a4),a4
 		move.l	a4,a5
 		moveq	#0,d5
-.loop:		lea	(PRETABLE,a2),a6	; PRETABLE
+.loop:		lea	PRETABLE(a2),a6		; PRETABLE
 		bsr.b	getSyml			; trashes a6/A3
 
 		; inverse MTF
 
-		lea	(MTF,a2),a6
+		lea	MTF(a2),a6
 		add.w	d2,a6
 		move.w	d2,d0
 		move.b	(a6),d2
 		bra.b	.mtf1
 
 		;
-.mtf:		move.b	-(a6),(1,a6)
+.mtf:		move.b	-(a6),1(a6)
 .mtf1:		dbf	d0,.mtf
 		move.b	d2,(a6)
 		;
 		ror.w	#4+1,d2
 		or.w	d5,d2
-		addq.w	#1,d5
 		move.w	d2,(a5)+
+		addq.w	#1,d5
 		cmp.w	d5,d3
 		bne.b	.loop
 
@@ -332,72 +368,80 @@ buildDecodingTree2:
 
 
 buildDecodingTree:
-		move.w	d3,d5
-		move.l	a4,a6
+		movem.l	d3/d6/d7,-(sp)
+		moveq	#1,d4		; current heap max
+		move.w	#$07ff,d6
+		move.l	a4,a6		; A6 = heap and start of symbols
 		;
-		; Note that the prepareDecodingStructure clears the (-2,A4)
-		; so the inplaceShellsort will always terminate correctly.
-		;
-
-inplaceShellsort:
-
-		; *FIX ME* This routine seems to be the bottle neck
-		; performance wise.. Need to replace the Shellsort
-		; with something more clever or then rethink the
-		; whole tree building differently :(
-		;
-		move.l	a4,a3
-		move.w	(a4)+,d0
+buildHeap:	move.w	(a4)+,d0
 		;
 		; Format of D0 is:  "dddddnnn|nnnnnnnn" where
 		;  'd' is the depth in the huffman tree and
 		;  'n' is the leaf number.
-
-
-.lower:		cmp.w	-(a3),d0
-		bhs.b	.hgher
-		move.w	(a3),(2,a3)
-		bra.b	.lower
-.hgher:		move.w	d0,(2,a3)
-		subq.w	#1,d5
-		bne.b	inplaceShellsort
-
-doneSort:
-		; A4 = end of TABLE.. start of next
-
-		; Find _start.. i.e. find the first symbol with
-		; nonzero weight.
 		;
-		; A6 = start of symbols
+		cmp.w	d6,d0
+		bls.b	.skipZero	; skip symbols with zero depth
+		move.w	d4,d5
+		add.w	d5,d5
+		;
+.buildLoop:
+		move.w	d5,d2
+		move.w	d0,-2(a6,d5.w)
+		lsr.w	#2,d5
+		beq.b	.root
+		add.w	d5,d5
+		move.w	-2(a6,d5.w),d1
+		cmp.w	d1,d0
+		bls.b	.root
+		move.w	d1,-2(a6,d2.w)
+		bra.b	.buildLoop
+		;
+.root:		addq.w	#1,d4		; increase size of heap
+.skipZero:	subq.w	#1,d3
+		bne.b	buildHeap
+		subq.w	#2,d4
+		bmi.s	allZero
+		move.w	d4,d3		; D3 = heapsize-1
+		;
+		add.w	d4,d4
+		lea	2(a6,d4.w),a3
+		;
+		; D3 = heapsize-1
+		; D4 = (heapsize*2)-2
+		; A3 = end of heap+2
 		; A4 = end of symbols
-
-		move.w	d3,-(sp)
-		moveq	#7,d0
-		lea	(-2,a6),a3
-.zero:		addq.l	#2,a3
-		subq.w	#1,d3
-		cmp.l	a3,a4
-		beq.b	allZero
-		cmp.b	(a3),d0
-		bhs.b	.zero
-doneZero:
-
+		;
+		clr.w	(a3)		; Termination code for
+					; calculateCanonicalCodes
+heapSort:	move.w	-(a3),d1
+		move.w	(a6),(a3)
+		moveq	#2,d5
+.siftDown:	move.w	d5,d2
+		; left leaf
+		add.w	d2,d2
+		cmp.w	d4,d2
+		bhi.b	.done
+		beq.b	.leftMax
+		move.w	0(a6,d2.w),d0
+		cmp.w	-2(a6,d2.w),d0
+		bls.b	.leftMax
+		addq.w	#2,d2
+.leftMax:	cmp.w	-2(a6,d2.w),d1
+		bhs.b	.done
+		; swap leaf and parent
+.move:		move.w	-2(a6,d2.w),-2(a6,d5.w)
+		move.w	d2,d5
+		bra.b	.siftDown
+		;
+.done:		move.w	d1,-2(a6,d5.w)
+		subq.w	#2,d4
+		bgt.b	heapSort
+		;
 calculateCanonicalCodes:
-		; move rest so that n will always be 0 at the beginning..
-
-		move.l	a6,a5
-.move:		move.w	(a3)+,(a5)+
-		cmp.l	a3,a4
-		bhi.b	.move
-		clr.w	(a5)
-doneMove:
-
-
-		lea	(-128,a6),a5
+		lea	-128(a6),a5
 		moveq	#64,d2		; artificial shift.. see getSyml()
 		moveq	#0,d4
 		
-
 		; a6 = _alp+_start 
 		; A4 = dest = _tlb
 		; D3 = _alpsize-1
@@ -405,11 +449,13 @@ doneMove:
 		; d2 = 0
 		;
 
+		moveq	#11,d7
+	
+
 .loop:		move.w	(a6),d0
-		moveq	#11,d5
 		move.l	(a6),d1		
-		lsr.w	d5,d0
-		lsr.w	d5,d1
+		lsr.w	d7,d0
+		lsr.w	d7,d1
 		sub.w	d0,d1
 		beq.b	.skip
 		
@@ -423,22 +469,21 @@ doneMove:
 		swap	d5
 		move.w	d0,d5
 
-		move.l	d5,(16*4-4,a5)		; ind << 16 | bts
+		move.l	d5,16*4-4(a5)		; ind << 16 | bts
 
 .skip:		addq.w	#1,d4
 		lsl.l	d1,d4			; D1 can be zero..
 		addq.w	#1,d2
 
-		and.w	#$07ff,(a6)+
+		and.w	d6,(a6)+		; and.w	#$07ff,(a6)+
 		dbf	d3,.loop
 
-allZero:	move.w	(sp)+,d3
+allZero:	movem.l	(sp)+,d3/d6/d7
 		rts
 e:
+		;incbin	"data:tmp/flastro40000.stc"
 		incbin	"data:tmp/flastro40000.stc"
-		;incbin	"work:asrc/fxp3/stc5.stc"
-		;incbin	"work:asrc/fxp3/test.stc5"
-		;incbin	"work:asrc/fxp3/ap.stc5"
 o:
+
 
 
