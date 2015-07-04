@@ -49,8 +49,8 @@
 #define FXEP_TYPE0_ID (('F'<<24)|('X'<<16)|('P'<<8)|'0')
 #define FXEP_TYPE1_ID (('F'<<24)|('X'<<16)|('P'<<8)|'1')
 #define FXEP_TYPE2_ID (('F'<<24)|('X'<<16)|('P'<<8)|'2')
-#define FXEP_TYPE3_ID (('S'<<24)|('T'<<16)|('C'<<8)|'5')
-#define FXEP_TYPE4_ID (('S'<<24)|('T'<<16)|('C'<<8)|'6')
+#define FXEP_TYPE3_ID (('S'<<24)|('4'<<16)|('0'<<8)|'5')
+#define FXEP_TYPE4_ID (('S'<<24)|('4'<<16)|('0'<<8)|'6')
 
 //
 // FXPx  block header defines..
