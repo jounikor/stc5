@@ -21,7 +21,6 @@
 
 #include "fio.h"
 #include "compress_fxe3.h"
-#include "compress_fxe4.h"
 #include "headers.h"
 
 
@@ -47,8 +46,8 @@ namespace {
 
 	// static constants..
 
-	enum FXEPalgorithm { fxe0=0, fxe1, fxe2, fxe3, fxe4 };
-	FXEPalgorithm algo = fxe3;
+	enum FXEPalgorithm { s405_abs=0 };
+	FXEPalgorithm algo = s405_abs;
 	static bool RAW = false;
 
 	// Our write buffers..
@@ -74,23 +73,11 @@ namespace {
 		int (*fixHeader)( int, FWriter*, long );
 		int (*saveDecompressor)( FWriter* );
 		int (*fixDecompressor)( FWriter*, long, const fixInfo* );
-		int (*postFix)( FWriter*, long );
+		int (*postFix)( FWriter*, long, const fixInfo* );
 	} compressionParams[] = {
-		// FXE0
-		{ 	NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-			NULL,NULL, NULL, NULL, NULL },
-		// FXE1
-		{ 	NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-			NULL,NULL, NULL, NULL, NULL },
-		// FXE2
-		{ 	NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-			NULL,NULL, NULL, NULL, NULL },
-		// FXE3
+		// S405_abs
 		{ 	buf, BLOCK_BUFFER, FXE3_GOOD_MATCH, FXE3_MAX_MATCH, 2, 32, 4096, 1, 6+8, FXE3_BLOCK_SIZE,
-			saveFXEHeader,fixFXEHeader, saveFXE3Header, fixFXE3Header, NULL },
-		// FXE4
-		{ 	buf, BLOCK_BUFFER, FXE4_GOOD_MATCH, FXE4_MAX_MATCH, 2, 32, 4096, 1, 6+8, FXE4_BLOCK_SIZE,
-			saveFXEHeader,fixFXEHeader, NULL, NULL, NULL }
+			NULL,NULL, saveS405ABSHeader, fixS405ABSHeader, NULL }
 	};
 
 	// misc functions..
@@ -100,12 +87,14 @@ namespace {
 	void usage( char **argv ) {
 		cerr << "Usage: " << argv[0] << " [-<options>] infile outfile" << endl;
 		cerr << "Options:" << endl;
-		//cerr << "  -t string Set game title (32 chars max, default=infile)" << endl;
-		//cerr << "  -A n      Select algorithm (0=FXE0, 2=FXE2, 3=STC5, 4=STC6), default=3" << endl;
+		cerr << "  -A n      Select algorithm (0=S405 absolute/data), default=0" << endl;
 		cerr << "  -h        Show help" << endl;
 		cerr << "  -d        Handle file as raw data" << endl;
-		
-		exit(1);
+		cerr << "  -s addr   Load address in hex for the decompressed data" << endl;
+        cerr << "  -j addr   Execute start address in hex for the compressed data" << endl;
+        cerr << "  -w addr   Location in hes for the work area (0xA20 bytes)" << endl;
+        cerr << "  -e n      Select decrompression effect (none=0, color0=1), default=1" << endl;
+        exit(1);
 	}
   
   	//
@@ -142,7 +131,7 @@ int main( int argc, char** argv ) {
 
   	// Check commandline & options..
 
-	while ((ch = getopt(argc,argv,"t:A:hd")) != -1) {
+	while ((ch = getopt(argc,argv,"t:A:hds:j:w:")) != -1) {
 		switch (ch) {
 		case 't':	// title
 			title = optarg;
@@ -173,21 +162,10 @@ int main( int argc, char** argv ) {
 	// Get the compressor..
 
 	switch (algo) {
-	case fxe0:
-	case fxe1:
-    case fxe2:
-		cerr << "Sorry.. No bonus!" << endl;
-		exit(0);
-		break;
-	case fxe3:
+	case s405_abs:
 		//cout << "compr = new CompressFXE2(NBLOCKS);" << endl;
 		compr = new CompressFXE3(NBLOCKS);
     	ID = FXEP_TYPE3_ID;
-		break;
-	case fxe4:
-		//cout << "compr = new CompressFXE2(NBLOCKS);" << endl;
-		compr = new CompressFXE4(NBLOCKS);
-    	ID = FXEP_TYPE4_ID;
 		break;
 	default:
 		cerr << "** Error: unknown compression algorithm.." << endl;
@@ -327,8 +305,6 @@ int main( int argc, char** argv ) {
 		// check for a proper EOF mark
 		
 		switch (compr->getTypeID()) {
-		case FXEP_TYPE0_ID:
-		case FXEP_TYPE2_ID:
 		default:
 			PUTW(tb,FXEP_EOF);
 			break;
@@ -375,7 +351,6 @@ int main( int argc, char** argv ) {
 
 	fix.osize = origiFileSize;
 	fix.csize = comprFileSize;
-	fix.gap = gap;
 
 	//
 	// Calculate stuff..

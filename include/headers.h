@@ -3,31 +3,7 @@
 
 #include "fio.h"
 
-// FXP0 header..
-
-#define FXE0_CRT0_SIZE			488
-#define FXE0_FIX_DATASTART_POS 	12
-#define FXE0_FIX_DATAEND_POS	16
-#define FXE0_FIX_BSSSTART_POS	20
-#define FXE0_FIX_BSSEND_POS		24
-
-// FXP1 header..
-
-#define FXE1_CRT0_SIZE 			668
-#define FXE1_FIX_DATASTART_POS	0
-#define FXE1_FIX_DATAEND_POS	4
-#define FXE1_FIX_BSSSTART_POS	8
-#define FXE1_FIX_BSSEND_POS		12
-
-// FXP2 header..
-
-#define FXE2_CRT0_SIZE 			744
-#define FXE2_FIX_DATASTART_POS	12
-#define FXE2_FIX_DATAEND_POS	16
-#define FXE2_FIX_BSSSTART_POS	20
-#define FXE2_FIX_BSSEND_POS		24
-
-// FXP3 header..
+// S405 header..
 
 #define FXE3_CRT0_SIZE 			840
 #define FXE3_FIX_DATASTART_POS	12
@@ -49,16 +25,16 @@
 struct fixInfo {
 	long osize;		// original file size
 	long csize;		// compressed file size
-	long gap;		// gap between code & data sections
-	long mhz;		// clockspeed
-	long fac;		// factor..
-	long flash;		// flash color reg
+	long flash;		// flash effect address
+    long load;      // load address
+    long jump;      // jump address
+    long work;      // work area address
 
 	fixInfo() {
-		gap = 0;
-		mhz = 0;
-		fac = 0;
-		flash = 0x0c000000;
+        load = 0x40000;
+        jump = 0x40000;
+        work = 0x80000-0xa20;
+		flash = 0xdff180;
 	}
 	~fixInfo() {}
 
@@ -69,22 +45,12 @@ struct fixInfo {
 namespace Headers {
 	int saveFXEHeader( int, FWriter*, char*, char*, char*, char*, char* );
 	int fixFXEHeader( int, FWriter*, long );
-	int saveFXE0Header( FWriter* );
-	int fixFXE0Header( FWriter*, long, const fixInfo* );
-	int saveFXE1Header( FWriter* );
-	int fixFXE1Header( FWriter*, long, const fixInfo* );
-	int saveFXE2Header( FWriter* );
-	int fixFXE2Header( FWriter*, long, const fixInfo* );
-	int saveFXE3Header( FWriter* );
-	int fixFXE3Header( FWriter*, long, const fixInfo* );
+	int saveS405ABSHeader( FWriter* );
+	int fixS405ABSHeader( FWriter*, long, const fixInfo* );
 
 	//
 
-	extern"C" unsigned char fxe0_crt0_bin[];
-	extern"C" unsigned char fxe1_crt0_bin[];
-	extern"C" unsigned char fxe2_crt0_bin[];
-	extern"C" unsigned char fxe3_crt0_bin[];
-	extern unsigned char FXEheader [];
+	extern"C" unsigned char s405_abs_dec[];
 };
 
 
