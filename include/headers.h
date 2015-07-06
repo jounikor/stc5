@@ -5,11 +5,9 @@
 
 // S405 header..
 
-#define FXE3_CRT0_SIZE 			840
-#define FXE3_FIX_DATASTART_POS	12
-#define FXE3_FIX_DATAEND_POS	16
-#define FXE3_FIX_BSSSTART_POS	20
-#define FXE3_FIX_BSSEND_POS		24
+#define S405_HUNK_HEADER_SIZE   32
+#define S405_ABS_DEC_SIZE       496
+#define S405_HUNK_TRAILER_SIZE  4
 
 // Common stuff
 
@@ -47,12 +45,13 @@ namespace Headers {
 	int fixFXEHeader( int, FWriter*, long );
 	int saveS405ABSHeader( FWriter* );
 	int fixS405ABSHeader( FWriter*, long, const fixInfo* );
+	int saveS405ABSTrailer( FWriter*, long, const fixInfo* );
+
+
+
 
 	//
 
-	extern"C" unsigned char s405_abs_dec[];
 };
-
-
 
 #endif

@@ -77,7 +77,7 @@ namespace {
 	} compressionParams[] = {
 		// S405_abs
 		{ 	buf, BLOCK_BUFFER, FXE3_GOOD_MATCH, FXE3_MAX_MATCH, 2, 32, 4096, 1, 6+8, FXE3_BLOCK_SIZE,
-			NULL,NULL, saveS405ABSHeader, fixS405ABSHeader, NULL }
+			NULL,NULL, saveS405ABSHeader, fixS405ABSHeader, saveS405ABSTrailer }
 	};
 
 	// misc functions..
@@ -125,13 +125,14 @@ int main( int argc, char** argv ) {
 	fixInfo fix;
 	char* infile;
 
-	//
+
+    // constants..
 
 	cout << endl << "StoneCracker v5 - (c) 1994-2014 Jouni 'Mr.Spiv' Korhonen" << endl << endl;
 
   	// Check commandline & options..
 
-	while ((ch = getopt(argc,argv,"t:A:hds:j:w:")) != -1) {
+	while ((ch = getopt(argc,argv,"t:A:hds:j:w:e:")) != -1) {
 		switch (ch) {
 		case 't':	// title
 			title = optarg;
@@ -142,7 +143,21 @@ int main( int argc, char** argv ) {
 		case 'd':	//
 			RAW = true;
 			break;
-		case '?':
+        case 's':
+            fix.load = strtol(optarg,NULL,16);
+            break;
+        case 'j':
+            fix.jump = strtol(optarg,NULL,16);
+            break;
+        case 'w':
+            fix.work = strtol(optarg,NULL,16);
+            break;
+		case 'e':
+            if (atoi(optarg) == 0) {
+                fix.flash = 0xdff1fe;
+            }
+            break;
+        case '?':
 		case 'h':
 		default:
 			usage(argv);
@@ -165,7 +180,7 @@ int main( int argc, char** argv ) {
 	case s405_abs:
 		//cout << "compr = new CompressFXE2(NBLOCKS);" << endl;
 		compr = new CompressFXE3(NBLOCKS);
-    	ID = FXEP_TYPE3_ID;
+    	ID = S405_TYPE_ID;
 		break;
 	default:
 		cerr << "** Error: unknown compression algorithm.." << endl;
@@ -199,7 +214,6 @@ int main( int argc, char** argv ) {
 	//
 	//
 
-	int gap = -1;
 	infile = argv[optind];
 
 	//
@@ -244,6 +258,19 @@ int main( int argc, char** argv ) {
 	// Now we are ready to go.. first prepare the compressed
 	// file header information..
 
+    if (!RAW) {
+        int n;
+        n = compressionParams[algo].saveDecompressor(&wfile); 
+        comprFileSize = totalFileSize = n;
+        if (n < 0) {
+		    cerr << "** Error writing file (2).." << endl;
+		    rfile.close();
+		    wfile.close();
+		    delete compr;
+		    return 0;
+	    }
+    }
+
 	tb = buf;
 	PUTL(tb,ID);
 	wfile.write(buf,4);
@@ -266,7 +293,6 @@ int main( int argc, char** argv ) {
  		GETW(tb,bl);
 
 		// Fix block size NOT to include FXEP_BLOCK_HEADER
-
 
 		bl -= FXEP_BLOCK_HEADER_SIZE;
 		tb = buf;
@@ -308,7 +334,7 @@ int main( int argc, char** argv ) {
 		default:
 			PUTW(tb,FXEP_EOF);
 			break;
-		case FXEP_TYPE3_ID:
+		case S405_TYPE_ID:
 			PUTW(tb,FXEP_EOF_NEW);
 			break;
 		}
@@ -325,32 +351,28 @@ int main( int argc, char** argv ) {
 		comprFileSize += 6;
 		totalFileSize += 6;
     }
-	if (n < 0) {
-		cerr << "** Error writing file (2).." << endl;
-		rfile.close();
-		wfile.close();
-		delete compr;
-		return 0;
-	}
 
 	// Check alignment.. must be 4
 
-#if 0
-
-	if (comprFileSize & 0x03) {
+	if (n == 0 && !RAW && (comprFileSize & 0x03)) {
 		unsigned long pad = 0;
 		long l = 4-(comprFileSize & 0x03);
 		wfile.write(reinterpret_cast<unsigned char*>(&pad),l);
 		comprFileSize += l;
 		totalFileSize += l;
 	}
-#endif
-	//
+	
+    //
 	// Fix headers..
 	//
 
 	fix.osize = origiFileSize;
 	fix.csize = comprFileSize;
+
+    if (!RAW) {
+        compressionParams[algo].fixDecompressor(&wfile,0,&fix);
+        totalFileSize += compressionParams[algo].postFix(&wfile,0,&fix);
+    }
 
 	//
 	// Calculate stuff..
