@@ -34,8 +34,8 @@ ifneq (,$(findstring MINGW,$(UNAME)))
 endif
 
 ifneq (,$(findstring CYGWIN,$(UNAME)))
-	CFLAGS		+= -mno-cygwin
-	LDFLAGS		+= -mno-cygwin
+#	CFLAGS		+= -mno-cygwin
+#	LDFLAGS		+= -mno-cygwin
 	EXEEXT		:= .exe
 endif
 
