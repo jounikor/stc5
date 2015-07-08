@@ -143,8 +143,8 @@ extern int getopt (int ___argc, char *const *___argv, const char *__shortopts);
 #elif defined(WIN32) || defined(WINNT) || defined(__WIN32__) || defined(__WIN32)
 extern int getopt (int ___argc, char *const *___argv, const char *__shortopts);
 #else /* not __GNU_LIBRARY__ */
-extern int getopt ();
-#error foobar
+extern int getopt ( int, char *const *, const char * );
+/*#error foobar*/
 #endif /* __GNU_LIBRARY__ */
 
 #ifndef __need_getopt
