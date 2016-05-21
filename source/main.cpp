@@ -249,8 +249,6 @@ int main( int argc, char** argv ) {
 	//
 
 	long origiFileSize = 0;
-	long totalFileSize = 0;
-	long comprFileSize = 0;
 	long n;
 
 	rfile.seek(0,IO_SEEK_END);
@@ -271,17 +269,15 @@ int main( int argc, char** argv ) {
 		    wfile.close();
 		    delete compr;
 		    return 0;
-	    } else {
-            totalFileSize = n+m;
-        }
+	    }
     }
 
 	tb = buf;
 	PUTL(tb,ID);
 	wfile.write(buf,4);
 
-	totalFileSize += 4;
-	comprFileSize = 4;
+	fix.tsize += 4;
+	fix.csize += 4;
 
 	cout << "Crunching (0/" << origiFileSize << ")";
 	cout.flush();
@@ -307,8 +303,8 @@ int main( int argc, char** argv ) {
 			n = -1;
 			break;
 		}
-		comprFileSize += n;
-		totalFileSize += n;
+		fix.csize += n;
+		fix.tsize += n;
 
 		if (--ch == 0) {
 			cout << "\rCrunching (" << compr->getOriginalSize() << "/" << origiFileSize << ")";
@@ -353,19 +349,17 @@ int main( int argc, char** argv ) {
 			delete compr;
 			return 0;
 		}
-		comprFileSize += 6;
-		totalFileSize += 6;
+		fix.csize += 6;
+		fix.tsize += 6;
     }
 
-    cerr << "compr: " << comprFileSize << endl;
+    //cerr << "compr: " << fix.csize << endl;
 
     //
 	// Fix headers..
 	//
 
 	fix.osize = origiFileSize;
-	fix.csize = comprFileSize;
-    fix.tsize = totalFileSize;
 
     if (!RAW) {
         compressionParams[algo].postFix(&wfile,&fix);
@@ -378,7 +372,7 @@ int main( int argc, char** argv ) {
 	//
 
 	double gain = 100.0 - static_cast<double>(fix.tsize)
-                / static_cast<double>(origiFileSize) * 100.0;
+                / static_cast<double>(fix.osize) * 100.0;
 
 	cout.precision(3);
 	cout << "\rCrunched " << gain << "% - total " << fix.tsize << " bytes" << endl;

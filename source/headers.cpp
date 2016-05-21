@@ -107,7 +107,7 @@ namespace Headers {
         long t;
 
         b = bb;
-        t = fix->tsize >> 2;
+        t = fix->csize >> 2;
         PUTL(b,t);
         w->seek(fix->headerPos+20,IO_SEEK_SET);
         w->write(bb,4);
@@ -123,6 +123,7 @@ namespace Headers {
         fix->decompPos = w->tell();
         m = w->write(s405_abs_dec,S405_ABS_DEC_SIZE);
         fix->tsize += m;
+        fix->csize += m;
         return m;
 	}
 	
@@ -164,11 +165,15 @@ namespace Headers {
     int saveS405ABSHunkTrailer( FWriter* w, fixInfo* fix ) {
         int n,m;
 
-        m = 4 - (fix->tsize & 3);
+        m = fix->tsize & 3;
         w->seek(0,IO_SEEK_END);
+        /* fix */
         n = w->write(s405_abs_hunk_trailer+m,S405_HUNK_TRAILER_SIZE-m);
         fix->trailerPos = w->tell();
         fix->tsize += n;
+        if (m) {
+            fix->csize += 4-m;
+        }
         return n;
     }
 

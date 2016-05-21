@@ -10,7 +10,6 @@
 #define S405_HUNK_TRAILER_SIZE  8
 
 // Common stuff
-
 #define FXE_HEADER_SIZE 1128
 #define FXE_TOTALFILESIZE_POS 4
 #define FXE_TITLE_POS 12
