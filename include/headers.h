@@ -6,8 +6,8 @@
 // S405 header..
 
 #define S405_HUNK_HEADER_SIZE   32
-#define S405_ABS_DEC_SIZE       496
-#define S405_HUNK_TRAILER_SIZE  4
+#define S405_ABS_DEC_SIZE       450
+#define S405_HUNK_TRAILER_SIZE  8
 
 // Common stuff
 
@@ -23,17 +23,26 @@
 struct fixInfo {
 	long osize;		// original file size
 	long csize;		// compressed file size
+    long tsize;     // total size including headers and such
 	long flash;		// flash effect address
     long load;      // load address
     long jump;      // jump address
     long work;      // work area address
 
+    long headerPos;     // start of the header.. should be 0
+    long decompPos;     // start of decompressor
+    long trailerPos;    // stat of trailer
+
 	fixInfo() {
         load = 0x40000;
         jump = 0x40000;
-        work = 0x80000-0xa20;
+        work = 0x80000-0xb00;
 		flash = 0xdff180;
-	}
+        headerPos = 0;
+        decompPos = 0;
+        trailerPos = 0;
+        osize = csize = tsize = 0;
+    }
 	~fixInfo() {}
 
 };
@@ -41,11 +50,11 @@ struct fixInfo {
 //
 
 namespace Headers {
-	int saveFXEHeader( int, FWriter*, char*, char*, char*, char*, char* );
-	int fixFXEHeader( int, FWriter*, long );
-	int saveS405ABSHeader( FWriter* );
-	int fixS405ABSHeader( FWriter*, long, const fixInfo* );
-	int saveS405ABSTrailer( FWriter*, long, const fixInfo* );
+    int saveS405ABSHunkHeader( FWriter*, char*, fixInfo*, ... );
+	int fixS405ABSHunkHeader( FWriter*, fixInfo* );
+    int saveS405ABSHeader( FWriter*, fixInfo* );
+	int fixS405ABSHeader( FWriter*, const fixInfo* );
+	int saveS405ABSHunkTrailer( FWriter*, fixInfo* );
 
 
 

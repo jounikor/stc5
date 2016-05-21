@@ -16,6 +16,7 @@
 #include <iostream>
 #include <cstring>
 #include "port.h"
+#include <inttypes.h>
 
 #include <unistd.h>
 
@@ -69,15 +70,17 @@ namespace {
 		int numLazy;
 		int numDistBits;
 		int windowSize;
-		int (*saveHeader)( int, FWriter*, char*, char*, char*, char*, char* );
-		int (*fixHeader)( int, FWriter*, long );
-		int (*saveDecompressor)( FWriter* );
-		int (*fixDecompressor)( FWriter*, long, const fixInfo* );
-		int (*postFix)( FWriter*, long, const fixInfo* );
+		int (*saveHeader)( FWriter*, char*, fixInfo*, ... );
+		int (*fixHeader)( FWriter*, fixInfo*  );
+		int (*saveDecompressor)( FWriter*, fixInfo*  );
+		int (*fixDecompressor)( FWriter*, const fixInfo* );
+		int (*postFix)( FWriter*, fixInfo* );
 	} compressionParams[] = {
 		// S405_abs
 		{ 	buf, BLOCK_BUFFER, FXE3_GOOD_MATCH, FXE3_MAX_MATCH, 2, 32, 4096, 1, 6+8, FXE3_BLOCK_SIZE,
-			NULL,NULL, saveS405ABSHeader, fixS405ABSHeader, saveS405ABSTrailer }
+			saveS405ABSHunkHeader,fixS405ABSHunkHeader, saveS405ABSHeader, fixS405ABSHeader,
+            saveS405ABSHunkTrailer
+        }
 	};
 
 	// misc functions..
@@ -92,7 +95,7 @@ namespace {
 		cerr << "  -d        Handle file as raw data" << endl;
 		cerr << "  -s addr   Load address in hex for the decompressed data" << endl;
         cerr << "  -j addr   Execute start address in hex for the compressed data" << endl;
-        cerr << "  -w addr   Location in hes for the work area (0xA20 bytes)" << endl;
+        cerr << "  -w addr   Location in hes for the work area (0xB00 bytes)" << endl;
         cerr << "  -e n      Select decrompression effect (none=0, color0=1), default=1" << endl;
         exit(1);
 	}
@@ -128,7 +131,7 @@ int main( int argc, char** argv ) {
 
     // constants..
 
-	cout << endl << "StoneCracker v5 - (c) 1994-2014 Jouni 'Mr.Spiv' Korhonen" << endl << endl;
+	cout << endl << "StoneCracker v5 (5b) - (c) 1994-2016 Jouni 'Mr.Spiv' Korhonen" << endl << endl;
 
   	// Check commandline & options..
 
@@ -248,7 +251,6 @@ int main( int argc, char** argv ) {
 	long origiFileSize = 0;
 	long totalFileSize = 0;
 	long comprFileSize = 0;
-	long decomprOffset = 0;
 	long n;
 
 	rfile.seek(0,IO_SEEK_END);
@@ -259,16 +261,19 @@ int main( int argc, char** argv ) {
 	// file header information..
 
     if (!RAW) {
-        int n;
-        n = compressionParams[algo].saveDecompressor(&wfile); 
-        comprFileSize = totalFileSize = n;
-        if (n < 0) {
+        int n, m;
+        n = compressionParams[algo].saveHeader(&wfile, NULL, &fix);
+        m = compressionParams[algo].saveDecompressor(&wfile, &fix );
+        
+        if (n < 0 || m < 0) {
 		    cerr << "** Error writing file (2).." << endl;
 		    rfile.close();
 		    wfile.close();
 		    delete compr;
 		    return 0;
-	    }
+	    } else {
+            totalFileSize = n+m;
+        }
     }
 
 	tb = buf;
@@ -352,37 +357,31 @@ int main( int argc, char** argv ) {
 		totalFileSize += 6;
     }
 
-	// Check alignment.. must be 4
+    cerr << "compr: " << comprFileSize << endl;
 
-	if (n == 0 && !RAW && (comprFileSize & 0x03)) {
-		unsigned long pad = 0;
-		long l = 4-(comprFileSize & 0x03);
-		wfile.write(reinterpret_cast<unsigned char*>(&pad),l);
-		comprFileSize += l;
-		totalFileSize += l;
-	}
-	
     //
 	// Fix headers..
 	//
 
 	fix.osize = origiFileSize;
 	fix.csize = comprFileSize;
+    fix.tsize = totalFileSize;
 
     if (!RAW) {
-        compressionParams[algo].fixDecompressor(&wfile,0,&fix);
-        totalFileSize += compressionParams[algo].postFix(&wfile,0,&fix);
+        compressionParams[algo].postFix(&wfile,&fix);
+        compressionParams[algo].fixHeader(&wfile,&fix);
+        compressionParams[algo].fixDecompressor(&wfile,&fix);
     }
 
 	//
 	// Calculate stuff..
 	//
 
-	double gain = 100.0 - static_cast<double>(totalFileSize)
+	double gain = 100.0 - static_cast<double>(fix.tsize)
                 / static_cast<double>(origiFileSize) * 100.0;
 
 	cout.precision(3);
-	cout << "\rCrunched " << gain << "% - total " << totalFileSize << " bytes" << endl;
+	cout << "\rCrunched " << gain << "% - total " << fix.tsize << " bytes" << endl;
 
 	//
 	//
