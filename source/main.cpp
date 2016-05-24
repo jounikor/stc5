@@ -131,7 +131,7 @@ int main( int argc, char** argv ) {
 
     // constants..
 
-	cout << endl << "StoneCracker v5 (5b) - (c) 1994-2016 Jouni 'Mr.Spiv' Korhonen" << endl << endl;
+	cout << endl << "StoneCracker v5 (5c) - (c) 1994-2016 Jouni 'Mr.Spiv' Korhonen" << endl << endl;
 
   	// Check commandline & options..
 
@@ -312,15 +312,6 @@ int main( int argc, char** argv ) {
 			ch = 10;
 		}
 	}
-
-    // Original file must be even bytes length.. if not add an rtificial
-    // byte.. otherwise the decompressor has issues..
-
-    if (origiFileSize & 1) {
-        cout << "\rWarning: input file has no even bytes length.. rounding up..";
-        cout.flush();
-        ++origiFileSize;
-    }
 
 	//
 	// Finish the output file.. add EOF

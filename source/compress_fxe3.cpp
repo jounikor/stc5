@@ -22,21 +22,6 @@
 //
 //
 
-
-namespace {
-  // Our comparison function for qsort()..
-  // Sort into descending order..
-
-  int litcomp( const void* a, const void* b ) {
-    return reinterpret_cast<const literals*>(b)->count -
-           reinterpret_cast<const literals*>(a)->count;
-  }
-};
-
-//
-//
-//
-
 CompressFXE3::CompressFXE3( int nblks )
 	throw (std::bad_alloc, std::invalid_argument) :
 	LZ2min(FXE3_SLIDING_WINDOW,FXE3_BLOCK_SIZE,nblks) {

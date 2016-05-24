@@ -1,0 +1,5 @@
+build/*
+*.stc5
+*.raw
+
+

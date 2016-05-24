@@ -1,5 +1,5 @@
 //
-//
+// Disclaimer.. some file io error checking is blatantly ignored ;)
 //
 //
 
@@ -33,7 +33,7 @@ static unsigned char s405_abs_dec[S405_ABS_DEC_SIZE] = {
 	0x45,0xf9,0x00,0x07,0xf5,0x00,0x2c,0x49,
 	0x28,0x48,0x30,0x1c,0xd8,0xc0,0x66,0xfa,
 	0xdd,0xd4,0xb9,0xc9,0x63,0x10,0xb9,0xce,
-	0x62,0x0c,0x26,0x4e,0x55,0x8c,0x37,0x24,
+	0x62,0x0c,0x26,0x4e,0x55,0x8c,0x17,0x24,
 	0xb9,0xc8,0x62,0xfa,0x20,0x4b,0x54,0x48,
 	0x55,0x88,0xbd,0xc9,0x62,0x12,0x2c,0x78,
 	0x00,0x04,0x0c,0x6e,0x00,0x25,0x00,0x14,
@@ -130,7 +130,6 @@ namespace Headers {
 	int fixS405ABSHeader( FWriter* w, const fixInfo* fix ) {
         unsigned char b[4];
         unsigned char *p;
-        long t;
 
         // fix decruncher jump address
         
@@ -164,16 +163,17 @@ namespace Headers {
 
     int saveS405ABSHunkTrailer( FWriter* w, fixInfo* fix ) {
         int n,m;
-
-        m = fix->tsize & 3;
+        
         w->seek(0,IO_SEEK_END);
-        /* fix */
+
+        if ((m = fix->tsize & 3) == 0) {
+            m = 4;
+        }
+        
         n = w->write(s405_abs_hunk_trailer+m,S405_HUNK_TRAILER_SIZE-m);
         fix->trailerPos = w->tell();
         fix->tsize += n;
-        if (m) {
-            fix->csize += 4-m;
-        }
+        fix->csize += 4-m;
         return n;
     }
 
