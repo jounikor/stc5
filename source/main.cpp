@@ -131,7 +131,7 @@ int main( int argc, char** argv ) {
 
     // constants..
 
-	cout << endl << "StoneCracker v5 (5c) - (c) 1994-2016 Jouni 'Mr.Spiv' Korhonen" << endl << endl;
+	cout << endl << "StoneCracker v5 (5d) - (c) 1994-2016 Jouni 'Mr.Spiv' Korhonen" << endl << endl;
 
   	// Check commandline & options..
 

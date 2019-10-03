@@ -6,7 +6,7 @@
 // S405 header..
 
 #define S405_HUNK_HEADER_SIZE   32
-#define S405_ABS_DEC_SIZE       450
+#define S405_ABS_DEC_SIZE       436     // v5c = 450
 #define S405_HUNK_TRAILER_SIZE  8
 
 // Common stuff
